@@ -1,0 +1,22 @@
+[project]
+name = "001-languagebro"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.116.1",
+    "ipykernel>=6.29.5",
+    "langgraph>=0.5.2",
+    "logfire[fastapi]>=0.66.0",
+    "pydantic>=2.11.7",
+    "pydantic-ai>=0.4.1",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.1.1",
+    "uvicorn>=0.35.0",
+]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=6.29.5",
+]
