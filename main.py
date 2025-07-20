@@ -1,24 +1,30 @@
 from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from fastapi.responses import StreamingResponse
+from typing import List, Literal
 from llm import agent
 
 app = FastAPI()
 
-# store user request
+# define a model for each role and their contents
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+# request model accepts user request and store in history
 class ChatRequest(BaseModel):
-    user_msg: str
-
-# custom function:
-#  receive ans in chunks, streams message (hence yield)
-async def streaming_response(user_msg: str):
-    async with agent.run_stream(user_msg) as result:
-        async for message in result.stream_text():
-            yield message
-
+    user_request: str
+    history: List[ChatMessage] = []
 @app.post("/chat")
-async def chat(input_data: ChatRequest):
-    return StreamingResponse(streaming_response(input_data.user_msg))
+async def chat(request: ChatRequest):
+    # convert pydantic model into dictionary
+    msg_history = [message.model_dump() for message in request.history]
+
+    async def streaming_response_generator():
+        async with agent.run_stream(request.user_request, message_history=msg_history) as result:
+            async for message in result.stream_text():
+                yield message
+
+    return StreamingResponse(streaming_response_generator(), media_type="text/plain")
 
 # testing if the FastAPI works
 @app.get("/")

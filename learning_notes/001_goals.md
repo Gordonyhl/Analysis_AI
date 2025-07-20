@@ -1,13 +1,13 @@
 ### Badass checklist, each item build on top of each other
-[X] streaming response
-[ ] Chatbot with memory
-[X] FastAPI integration
-[X] Streaming response
-[ ] A front-end for chat
-[ ] Tool use, calculator tool to execute R command
-[ ] MCP call
-[ ] RAG (maybe adaptive RAG)
-[ ] Bi-directional, websocket connection
+[X] streaming response \
+[X] Chatbot with memory \
+[X] FastAPI integration \
+[X] Streaming response \
+[ ] HTTP post request for chatbot with memory \
+[ ] A front-end for chat \
+[ ] Tool use, calculator tool to execute R command \
+[ ] MCP call \
+[ ] RAG (maybe adaptive RAG) \
 
 
 ### Things to consider

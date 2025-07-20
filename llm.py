@@ -21,18 +21,24 @@ agent = Agent(
 
 # async function to stream the response
 async def main():
+    # empty string for storing memory
     msg_history = []
 
-    async with agent.run_stream('summarise software engineering in one sentence') as result:
-        async for message in result.stream_text():  
-            print(message)
+    while True:
+        user_input = input("You: ").strip()
+        if user_input.lower() == "quit":
+            break
 
-    messages = result.all_messages()
+        async with agent.run_stream(user_input, message_history=msg_history) as result:
+            async for message in result.stream_text():
+                print(message)
 
-    # Convert the history into a JSON-serializable Python object
-    py_obj = to_jsonable_python(messages)
-    json_str = json.dumps(py_obj, ensure_ascii=False, indent=2)
-    print(json_str)
+        messages = result.all_messages()
+        msg_history = messages
+        # Convert the history into a JSON-serializable Python object
+        py_obj = to_jsonable_python(msg_history)
+        json_str = json.dumps(py_obj, ensure_ascii=False, indent=2)
+        print(json_str) # print log
 
 if __name__ == "__main__":
     asyncio.run(main())
