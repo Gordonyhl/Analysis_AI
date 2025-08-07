@@ -10,13 +10,15 @@ import json
 
 load_dotenv()
 
+gpt5 = "gpt-5-bench-chatcompletions-combinedgpt41-api-ev3"
+
 gemini_model = GeminiModel('gemini-2.0-flash', provider = 'google-gla')
-openai_model = OpenAIModel('gpt-4.1-mini', provider = 'openai')
+openai_model = OpenAIModel(gpt5, provider = 'openai')
 
 agent = Agent(
     model = openai_model,
     system_prompt = "you're a helpful assistant, answer concisely and to the point",
-    model_settings=ModelSettings(temperature=1, max_tokens=500) # for the sake of settings
+    model_settings=ModelSettings(temperature=1, max_tokens=500)
 )
 
 # async function to stream the response
@@ -26,7 +28,7 @@ async def main():
 
     while True:
         user_input = input("You: ").strip()
-        if user_input.lower() == "quit":
+        if user_input.lower() in ["quit", "q"]:
             break
 
         async with agent.run_stream(user_input, message_history=msg_history) as result:
@@ -42,7 +44,7 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
+    
 """
 # code to be used later for chatbot with memory
 message_history: List[ModelMessage] = []
@@ -55,3 +57,4 @@ while True:
     result = agent.run_sync(user_input, message_history=message_history) # run the agent
     print(result.output) # print the result
     message_history = result.all_messages() """
+

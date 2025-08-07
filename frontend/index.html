@@ -38,9 +38,8 @@
             const userMessage = userInput.value.trim();
             if (!userMessage) return;
 
-            // Add user message to UI and history
+            // Add user message to UI
             addMessageToUI(userMessage, 'user');
-            chatHistory.push({ role: 'user', content: userMessage });
             userInput.value = '';
             sendButton.disabled = true;
 
@@ -54,7 +53,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         user_request: userMessage,
-                        history: chatHistory.slice(0, -1) // Send history *before* this new message
+                        history: chatHistory // Send the complete history
                     })
                 });
 
@@ -65,21 +64,49 @@
                 // Read the streaming response
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
-                let assistantResponse = '';
-                assistantMessageDiv.textContent = ''; // Clear the '...' placeholder
+                let buffer = '';
+                const historySeparator = "\n---HISTORY_SEPARATOR---\n";
+                assistantMessageDiv.textContent = ''; // Clear placeholder
 
                 while (true) {
                     const { value, done } = await reader.read();
-                    if (done) break;
+                    if (done) {
+                        // Handle any remaining content in the buffer when the stream is done
+                        if (buffer.includes(historySeparator)) {
+                            const parts = buffer.split(historySeparator);
+                            assistantMessageDiv.textContent = parts[0];
+                            chatHistory = JSON.parse(parts[1]);
+                            console.log("Updated history (on done):", chatHistory);
+                        }
+                        break;
+                    }
 
-                    const chunk = decoder.decode(value, { stream: true });
-                    assistantResponse += chunk;
-                    assistantMessageDiv.textContent = assistantResponse; // Update UI in real-time
-                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                    buffer += decoder.decode(value, { stream: true });
+                    const separatorIndex = buffer.indexOf(historySeparator);
+
+                    if (separatorIndex !== -1) {
+                        const textPart = buffer.substring(0, separatorIndex);
+                        const jsonPart = buffer.substring(separatorIndex + historySeparator.length);
+
+                        assistantMessageDiv.textContent = textPart;
+
+                        // The rest of the stream is the history
+                        let historyJson = jsonPart;
+                        while (true) {
+                            const { value, done } = await reader.read();
+                            if (done) break;
+                            historyJson += decoder.decode(value);
+                        }
+
+                        chatHistory = JSON.parse(historyJson);
+                        console.log("Updated history (separator found):", chatHistory);
+                        buffer = ''; // Clear buffer
+                        break; 
+                    } else {
+                        assistantMessageDiv.textContent = buffer;
+                        chatContainer.scrollTop = chatContainer.scrollHeight;
+                    }
                 }
-
-                // Once the stream is finished, add the complete response to history
-                chatHistory.push({ role: 'assistant', content: assistantResponse });
 
             } catch (error) {
                 console.error("Error fetching chat response:", error);
