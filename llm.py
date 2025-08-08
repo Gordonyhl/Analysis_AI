@@ -10,7 +10,7 @@ import json
 
 load_dotenv()
 
-gpt5 = "gpt-5-bench-chatcompletions-combinedgpt41-api-ev3"
+gpt5 = "gpt-5"
 
 gemini_model = GeminiModel('gemini-2.0-flash', provider = 'google-gla')
 openai_model = OpenAIModel(gpt5, provider = 'openai')

@@ -9,11 +9,13 @@ dependencies = [
     "ipykernel>=6.29.5",
     "langgraph>=0.5.2",
     "logfire[fastapi]>=0.66.0",
+    "pandas>=2.3.1",
     "pydantic>=2.11.7",
     "pydantic-ai>=0.4.1",
     "pydantic-settings>=2.0.0",
     "pytest>=8.4.1",
     "python-dotenv>=1.1.1",
+    "python-multipart>=0.0.20",
     "uvicorn>=0.35.0",
 ]
 
