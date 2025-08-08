@@ -14,3 +14,4 @@ Learn:
 1. Pydantic AI
 2. LangGraph
 3. FastAPI
+comet
