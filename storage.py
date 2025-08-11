@@ -57,17 +57,23 @@ async def init_schema(engine: Optional[AsyncEngine] = None) -> None:
 
 
 def _split_sql_statements(script: str) -> List[str]:
-    """Naive splitter for ';' terminated SQL statements removing comments/empties."""
-    cleaned_lines: List[str] = []
-    for line in script.splitlines():
-        stripped = line.strip()
-        if not stripped:
-            continue
-        if stripped.startswith("--"):
-            continue
-        cleaned_lines.append(line)
+    """Split SQL script into executable statements.
 
-    joined = "\n".join(cleaned_lines)
+    - Strips full-line and inline '--' comments before splitting
+    - Splits on ';' terminators
+    - Drops empty statements
+    """
+    processed_lines: List[str] = []
+    for raw_line in script.splitlines():
+        # Remove inline comments starting with '--'
+        if "--" in raw_line:
+            raw_line = raw_line.split("--", 1)[0]
+        line = raw_line.strip()
+        if not line:
+            continue
+        processed_lines.append(line)
+
+    joined = "\n".join(processed_lines)
     parts = [p.strip() for p in joined.split(";")]
     return [p for p in parts if p]
 
