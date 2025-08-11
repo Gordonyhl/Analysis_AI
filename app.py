@@ -42,20 +42,24 @@ def detect_delimiter(sample: str) -> Optional[str]:
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
     """
-    Uploads and validates a count table file (CSV or TSV).
+    Uploads and validates a data file (CSV, TSV, or TXT).
 
-    This endpoint processes the file in a streaming fashion, making it suitable
-    for large files. It auto-detects the delimiter and uses pandas for robust
-    parsing and validation.
+    This endpoint checks for a valid file extension, auto-detects the delimiter,
+    and ensures the file is a non-empty, parsable table.
 
     Returns:
         A JSON response with the file's properties, including dimensions,
         a snippet of the data, and column data types.
     """
+    # Check file extension
+    file_extension = file.filename.split('.')[-1].lower()
+    if file_extension not in ["csv", "tsv", "txt"]:
+        raise HTTPException(status_code=400, detail="Invalid file type. Please upload a CSV, TSV, or TXT file.")
+
     # Read a sample from the stream for delimiter detection
     try:
-        sample_bytes = await file.read(2048)  # Read a larger sample for better detection
-        await file.seek(0)  # Reset the stream pointer
+        sample_bytes = await file.read(2048)
+        await file.seek(0)
         sample_str = sample_bytes.decode('utf-8')
     except UnicodeDecodeError:
         raise HTTPException(status_code=400, detail="Invalid file encoding. Only UTF-8 is supported.")
@@ -66,31 +70,15 @@ async def upload_file(file: UploadFile = File(...)):
 
     try:
         # Process the file stream with pandas
-        # We use an iterator to read the file in chunks, which is memory-efficient.
         df_iterator = pd.read_csv(file.file, sep=delimiter, chunksize=1000, index_col=0, encoding='utf-8')
 
         # Get the first chunk to perform validation
         df = next(df_iterator)
 
-        # --- Validation for RNA-seq Count Tables ---
-        # 1. Check if data is numeric (counts should be numbers)
-        if not all(pd.api.types.is_numeric_dtype(df[col]) for col in df.columns):
-            raise HTTPException(status_code=422, detail="Data validation error: All count columns must be numeric.")
-
-        # 2. Check for non-numeric index (gene IDs should be strings)
-        if pd.api.types.is_numeric_dtype(df.index.dtype):
-            raise HTTPException(status_code=422, detail="Data validation error: The first column (gene IDs) should not be numeric.")
-
-        # 3. Check for empty dataframe
+        # --- Simplified Validation ---
+        # 1. Check for empty dataframe
         if df.empty:
             raise HTTPException(status_code=422, detail="Data validation error: The file appears to be empty or incorrectly formatted.")
-
-        # If validation passes, you could continue processing the rest of the chunks
-        # For this example, we'll just return info from the first chunk.
-        # To process the whole file:
-        # for chunk in df_iterator:
-        #     # process chunk
-        # full_df = pd.concat([df] + list(df_iterator)) # This would load the whole file in memory
 
         return {
             "filename": file.filename,

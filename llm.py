@@ -16,7 +16,7 @@ gemini_model = GeminiModel('gemini-2.0-flash', provider = 'google-gla')
 openai_model = OpenAIModel(gpt5, provider = 'openai')
 
 agent = Agent(
-    model = openai_model,
+    model = gemini_model,
     system_prompt = "you're a helpful assistant, answer concisely and to the point",
     model_settings=ModelSettings(temperature=1, max_tokens=500)
 )

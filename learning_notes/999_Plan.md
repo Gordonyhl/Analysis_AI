@@ -20,7 +20,7 @@ Short, practical phases to build an end-to-end prototype. Each phase has a clear
 - **Goal**: Store and retrieve data reliably.
 - **Tasks**:
   - Install PostgreSQL locally and create basic tables: `users`, `sessions`, `uploaded_files`.
-  - Use SQLAlchemy for ORM models aligned with Pydantic schemas.
+  - Use SQLAlchemy Core for ORM models aligned with Pydantic schemas for now.
   - Endpoints to save/retrieve session data.
   - Enhance upload flow:
     - Persist file metadata

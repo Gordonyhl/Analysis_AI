@@ -1,3 +1,8 @@
+'''
+testing, ignore this file for now 
+'''
+
+
 from typing import Annotated, Literal
 from typing_extensions import TypedDict
 from langgraph.graph import StateGraph, START, END, add_messages
@@ -13,8 +18,6 @@ graph_builder = StateGraph(State)
 
 def chat_agent(state: State):
     query = state["messages"][-1].content
-
-    result = 
 
 
 graph_builder.add_node("chatbot", chat_agent) # define a node named "chatbot", that uses the chat_agent function
