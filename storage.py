@@ -28,6 +28,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 
 from settings import settings
+from pydantic_ai import messages as ai_messages
 
 
 # ---------- Engine ----------
@@ -106,9 +107,35 @@ async def get_or_create_default_thread(*, engine: Optional[AsyncEngine] = None) 
 
 # ---------- Messages ----------
 
-def _row_to_agent_message(row: Tuple[Any, Any, Any]) -> Dict[str, Any]:
+def _row_to_agent_message(row: Tuple[Any, Any, Any]) -> Any:
+    """Convert a DB row to a pydantic-ai compatible ModelMessage dict.
+
+    pydantic-ai expects items in message_history to be ModelMessage objects:
+    - User messages are "ModelRequest" with parts containing a "user-prompt".
+    - Assistant messages are "ModelResponse" with parts containing "text".
+
+    We persist role and content as JSONB; here we adapt them accordingly.
+    """
     role, content_json, _idx = row
-    return {"role": role, "content": content_json}
+
+    # Ensure content is a string for user/text parts
+    if isinstance(content_json, str):
+        content_str = content_json
+    else:
+        content_str = json.dumps(content_json, ensure_ascii=False)
+
+    if role == "user":
+        return ai_messages.ModelRequest(parts=[ai_messages.UserPromptPart(content_str)])
+    elif role == "assistant":
+        return ai_messages.ModelResponse(parts=[ai_messages.TextPart(content_str)])
+    elif role == "tool":
+        # Minimal mapping: represent tool output as a ToolReturnPart within a request
+        return ai_messages.ModelRequest(
+            parts=[ai_messages.ToolReturnPart(tool_name="tool", content=content_json, tool_call_id="tool")]
+        )
+    else:
+        # Fallback: treat unknown role as user text
+        return ai_messages.ModelRequest(parts=[ai_messages.UserPromptPart(content_str)])
 
 
 async def load_recent_messages_for_thread(
@@ -170,7 +197,7 @@ async def append_message(
                   WHERE thread_id = :thread_id
                 )
                 INSERT INTO messages (thread_id, idx, role, content)
-                SELECT :thread_id, next_idx.idx, :role, :content::jsonb
+                SELECT :thread_id, next_idx.idx, :role, :content
                 FROM next_idx
                 RETURNING idx
                 """
@@ -208,7 +235,7 @@ async def append_messages(
                 text(
                     """
                     INSERT INTO messages (thread_id, idx, role, content)
-                    VALUES (:thread_id, :idx, :role, :content::jsonb)
+                    VALUES (:thread_id, :idx, :role, :content)
                     """
                 ),
                 {
