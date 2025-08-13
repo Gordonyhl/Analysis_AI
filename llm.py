@@ -1,5 +1,6 @@
 import asyncio
 import json
+import uuid
 from typing import List
 
 from dotenv import load_dotenv
@@ -12,7 +13,8 @@ from pydantic_core import to_jsonable_python
 from settings import settings
 from storage import (
     append_messages,
-    prepare_default_thread_history,
+    get_or_create_thread_by_title,
+    load_recent_messages_for_thread,
 )
 
 
@@ -30,21 +32,42 @@ agent = Agent(
 )
 
 
+async def select_thread() -> uuid.UUID:
+    """Allow user to select or create a new conversation thread."""
+    print("Select a conversation thread:")
+    print("1. Use default thread")
+    print("2. Enter a thread title to create/use")
+    choice = input("Enter choice (1 or 2): ").strip()
+
+    if choice == "2":
+        title = input("Enter thread title: ").strip()
+        if title:
+            return await get_or_create_thread_by_title(title)
+    
+    # Default thread
+    return await get_or_create_thread_by_title(settings.thread_title)
+
+
 async def main() -> None:
     """Interactive CLI chat that persists history in Postgres.
 
     Flow per turn:
-    - Load recent history for the default thread from Postgres
+    - Select or create a conversation thread
+    - Load recent history for the selected thread from Postgres
     - Stream the assistant reply while buffering the text
     - Append the user and assistant messages back to Postgres so conversation persists
     """
+    thread_id = await select_thread()
+    print(f"Using thread ID: {thread_id}")
+
     while True:
         user_input = input("You: ").strip()
         if user_input.lower() in ["quit", "q"]:
             break
 
-        thread_id, msg_history = await prepare_default_thread_history(
-            limit=settings.ai_history_limit
+        # Load recent history for the selected thread
+        msg_history = await load_recent_messages_for_thread(
+            thread_id, limit=settings.ai_history_limit
         )
 
         assistant_chunks: List[str] = []
