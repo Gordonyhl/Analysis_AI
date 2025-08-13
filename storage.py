@@ -1,21 +1,3 @@
-"""Postgres storage utilities.
-
-Owns read/write to Postgres and conversion between agent messages and DB rows.
-
-Functions provided:
-- get_async_engine: Build a singleton async engine from settings.
-- init_schema: Initialize schema from db/init/001_schema.sql (idempotent).
-- get_or_create_thread_by_title / get_or_create_default_thread: Thread management.
-- load_recent_messages_for_thread / load_recent_messages_for_default_thread: History loading.
-- append_message / append_messages: Persist new messages with next sequential idx.
-- count_messages, get_last_index, export_thread: Utilities for sanity checks/debugging.
-
-Note on message shape:
-- We return a list of dictionaries shaped like the agent expects, e.g. {"role": "user", "content": "..."}.
-- The schema stores role as text and content as JSONB. We persist whatever is in the "content" field as JSON.
-- We may need to adjust the shape to perfectly match pydantic-ai's ModelMessage in the future.
-"""
-
 from __future__ import annotations
 
 import json

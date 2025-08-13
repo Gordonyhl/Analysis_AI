@@ -29,13 +29,13 @@ class Settings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_file=(".env", ".env.postgres"),
+        env_file=(".env"),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
     )
 
-    # Database URL can be provided directly. If not provided, it's built from parts below.
+    # Database URL can be provided directly. If not provided, it's built from parts below. look into the .env file for the database url
     database_url: Optional[str] = Field(
         default=None,
         validation_alias=AliasChoices("DATABASE_URL", "POSTGRES_URL", "PG_DSN"),
@@ -77,6 +77,8 @@ class Settings(BaseSettings):
 
         Raises ValidationError if insufficient components are present to build a URL.
         """
+
+        # if database_url is set, use it
         if self.database_url:
             # Basic validation for acceptable schemes
             allowed_prefixes = ("postgresql://", "postgres://", "postgresql+asyncpg://")
