@@ -1,14 +1,11 @@
 import asyncio
-import json
 import uuid
-from typing import List
+from typing import AsyncGenerator, List
 
 from dotenv import load_dotenv
 from pydantic_ai import Agent
 from pydantic_ai.models.gemini import GeminiModel
-from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.settings import ModelSettings
-from pydantic_core import to_jsonable_python
 
 from settings import settings
 from storage import (
@@ -20,10 +17,7 @@ from storage import (
 
 load_dotenv()
 
-gpt5 = "gpt-5"
-
 gemini_model = GeminiModel("gemini-2.0-flash", provider="google-gla")
-openai_model = OpenAIModel(gpt5, provider="openai")
 
 agent = Agent(
     model=gemini_model,
@@ -48,15 +42,51 @@ async def select_thread() -> uuid.UUID:
     return await get_or_create_thread_by_title(settings.thread_title)
 
 
-async def main() -> None:
-    """Interactive CLI chat that persists history in Postgres.
+async def stream_chat_response(
+    user_input: str,
+    *,
+    thread_title: str | None = None,
+    thread_id: uuid.UUID | None = None,
+) -> AsyncGenerator[str, None]:
+    """Stream assistant response for a user message and persist the conversation.
 
-    Flow per turn:
-    - Select or create a conversation thread
-    - Load recent history for the selected thread from Postgres
-    - Stream the assistant reply while buffering the text
-    - Append the user and assistant messages back to Postgres so conversation persists
+    Args:
+        user_input: The incoming user message.
+        thread_title: Optional title for the thread; used if ``thread_id`` is not provided.
+        thread_id: Existing thread identifier to use.
+
+    Yields:
+        Chunks of the assistant's response as they are produced.
     """
+
+    if thread_id is None:
+        thread_id = await get_or_create_thread_by_title(
+            thread_title or settings.thread_title
+        )
+
+    msg_history = await load_recent_messages_for_thread(
+        thread_id, limit=settings.ai_history_limit
+    )
+
+    assistant_chunks: List[str] = []
+    async with agent.run_stream(user_input, message_history=msg_history) as result:
+        async for message in result.stream_text():
+            assistant_chunks.append(message)
+            yield message
+
+    assistant_text = "".join(assistant_chunks)
+
+    await append_messages(
+        thread_id,
+        [
+            {"role": "user", "content": user_input},
+            {"role": "assistant", "content": assistant_text},
+        ],
+    )
+
+
+async def main() -> None:
+    """Interactive CLI chat that persists history in Postgres."""
     thread_id = await select_thread()
     print(f"Using thread ID: {thread_id}")
 
@@ -65,34 +95,9 @@ async def main() -> None:
         if user_input.lower() in ["quit", "q"]:
             break
 
-        # Load recent history for the selected thread
-        msg_history = await load_recent_messages_for_thread(
-            thread_id, limit=settings.ai_history_limit
-        )
-
-        assistant_chunks: List[str] = []
-        async with agent.run_stream(user_input, message_history=msg_history) as result:
-            async for message in result.stream_text():
-                print(message, end="")
-                assistant_chunks.append(message)
-            print()  # newline after stream
-
-        assistant_text = "".join(assistant_chunks)
-
-        # Persist both user and assistant messages in order
-        await append_messages(
-            thread_id,
-            [
-                {"role": "user", "content": user_input},
-                {"role": "assistant", "content": assistant_text},
-            ],
-        )
-
-        # Optional: print the fully structured message history returned by the model
-        messages = result.all_messages()
-        py_obj = to_jsonable_python(messages)
-        json_str = json.dumps(py_obj, ensure_ascii=False, indent=2)
-        print(json_str)
+        async for chunk in stream_chat_response(user_input, thread_id=thread_id):
+            print(chunk, end="")
+        print()
 
 
 if __name__ == "__main__":
