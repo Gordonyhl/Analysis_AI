@@ -68,19 +68,23 @@ async def stream_chat_response(
         thread_id, limit=settings.ai_history_limit
     )
 
-    assistant_chunks: List[str] = []
+    last_yielded_text = ""
+    final_assistant_text = ""
     async with agent.run_stream(user_input, message_history=msg_history) as result:
-        async for message in result.stream_text():
-            assistant_chunks.append(message)
-            yield message
-
-    assistant_text = "".join(assistant_chunks)
+        # Manually calculate the delta to ensure correct streaming behavior
+        async for cumulative_text in result.stream_text(delta=False):
+            delta = cumulative_text[len(last_yielded_text):]
+            if delta:
+                yield delta
+                last_yielded_text = cumulative_text
+    
+    final_assistant_text = last_yielded_text
 
     await append_messages(
         thread_id,
         [
             {"role": "user", "content": user_input},
-            {"role": "assistant", "content": assistant_text},
+            {"role": "assistant", "content": final_assistant_text},
         ],
     )
 

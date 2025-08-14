@@ -19,11 +19,17 @@ async def chat_stream(payload: ChatRequest):
     """Stream the assistant's response to a chat message using SSE."""
 
     async def event_generator():
-        async for chunk in stream_chat_response(
-            payload.message, thread_title=payload.thread_title
-        ):
-            yield f"data: {chunk}\n\n"
-        yield "data: [DONE]\n\n"
+        try:
+            async for chunk in stream_chat_response(
+                payload.message, thread_title=payload.thread_title
+            ):
+                yield f"data: {chunk}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as e:
+            # Log the exception for debugging
+            print(f"An error occurred during streaming: {e}")
+            # Send an error message to the client
+            yield f"data: [ERROR] An unexpected error occurred on the server.\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
