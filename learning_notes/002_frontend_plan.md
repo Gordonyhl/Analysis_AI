@@ -21,37 +21,47 @@ The first step is to expose the chat functionality through a dedicated API endpo
 -   **Action:** Refactor the core logic.
     -   The chat logic currently in `llm.py`'s `main` loop will be moved into an async generator function (`stream_chat_response`) that can be called by the new endpoint. This function will handle loading history, running the agent, and persisting the conversation.
 
-### Phase 2: Integrate the API and Serve the Front-End
+### Phase 2: Integrate APIs and Serve the Front-End
 
-Next, we'll update the main application to incorporate the new API and prepare it to serve a web page.
+Next, we'll update the main application to incorporate the new API, simplify the existing upload endpoint, and prepare it to serve a web page.
 
 -   **Action:** Modify `app.py`.
-    -   **Integrate Router:** Import the router from `api.py` and include it in the main FastAPI application. This makes the `/api/chat/stream` endpoint live.
+    -   **Integrate Chat Router:** Import the router from `api.py` and include it in the main FastAPI application.
+    -   **Simplify Upload Endpoint:** Modify the existing `/upload` endpoint. Remove the complex CSV/pandas validation. The new goal is to simply accept a file and save it to a designated `uploads/` directory. It should return a simple success message.
     -   **Serve Static Files:** Configure FastAPI to serve static files from a new `/static` directory.
-    -   **Create Root Endpoint:** Add a root endpoint (`GET /`) that serves the main `index.html` file, making it the default page when a user visits the application's URL.
+    -   **Create Root Endpoint:** Add a root endpoint (`GET /`) that serves the main `index.html` file.
 
 ### Phase 3: Build the Front-End Interface
 
-With the backend ready, the final step is to create the user interface.
+With the backend ready, the next step is to create the user interface.
 
 -   **Action:** Create a `static/` directory.
 -   **Action:** Create a new file: `static/index.html`.
     -   **Structure (HTML):**
         -   A main container for the chat history.
-        -   An input field for the user to type their message.
-        -   A "Send" button.
+        -   An input field for the user to type their message and a "Send" button.
         -   An optional input field for specifying a conversation `thread_title`.
     -   **Styling (CSS):**
-        -   Use simple, modern CSS to create a clean and readable chat interface, with distinct styles for user and assistant messages.
+        -   Use simple, modern CSS to create a clean and readable chat interface.
     -   **Logic (JavaScript):**
-        -   Add an event listener to the "Send" button and the input field (for the "Enter" key).
-        -   When a message is sent, use the `fetch` API to make a `POST` request to the `/api/chat/stream` endpoint.
-        -   Process the streaming SSE response, progressively updating the assistant's message in the chat window as new text arrives.
-        -   Handle the end-of-stream signal to re-enable the "Send" button.
-        -   Display error messages gracefully if the API returns an error.
+        -   Add an event listener to handle sending chat messages via `fetch` to the `/api/chat/stream` endpoint.
+        -   Process the streaming SSE response to display the AI's message in real-time.
+
+### Phase 4: Integrate File Uploading into the Chat
+
+Finally, we'll connect the simplified upload functionality to the chat interface.
+
+-   **Action:** Modify `static/index.html`.
+    -   **Add Upload UI:** Add an `<input type="file">` element and an "Upload" button to the HTML structure.
+    -   **Add Upload Logic (JavaScript):**
+        -   Create a new JavaScript function to handle the file upload.
+        -   When the user clicks "Upload", use `FormData` and `fetch` to send the selected file to the simplified `/upload` endpoint.
+        -   Upon receiving a successful response from the server, display a confirmation message directly in the chat window (e.g., "System: You have uploaded `document.pdf`. You can now ask questions about it.").
 
 ### Milestone
-Once these three phases are complete, you will be able to:
+Once these four phases are complete, you will be able to:
 1.  Run `uvicorn app:app --reload`.
 2.  Open a web browser to `http://127.0.0.1:8000`.
-3.  Interact with the AI through a web interface, with conversations being saved to the database just as they were with the CLI tool.
+3.  Interact with the AI through a web interface.
+4.  Upload a document through the same interface and receive a confirmation that it's ready for discussion.
+

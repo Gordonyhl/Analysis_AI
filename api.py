@@ -13,7 +13,7 @@ class ChatRequest(BaseModel):
     message: str
     thread_title: str | None = None
 
-
+# chat stream endpoint, used by app.py for main chat interface
 @router.post("/api/chat/stream")
 async def chat_stream(payload: ChatRequest):
     """Stream the assistant's response to a chat message using SSE."""

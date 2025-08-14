@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f5f5f5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background-color: #2563eb;
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+            padding: 0 1rem;
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem 0;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .message {
+            display: flex;
+            gap: 0.75rem;
+            max-width: 85%;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+        }
+
+        .message.system {
+            align-self: center;
+            max-width: 100%;
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .message.user .message-avatar {
+            background-color: #2563eb;
+            color: white;
+        }
+
+        .message.assistant .message-avatar {
+            background-color: #059669;
+            color: white;
+        }
+
+        .message.system .message-avatar {
+            background-color: #7c3aed;
+            color: white;
+        }
+
+        .message-content {
+            background-color: white;
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+
+        .message.user .message-content {
+            background-color: #2563eb;
+            color: white;
+        }
+
+        .input-section {
+            background-color: white;
+            border-top: 1px solid #e5e7eb;
+            padding: 1rem 2rem;
+        }
+
+        .thread-input {
+            margin-bottom: 1rem;
+        }
+
+        .thread-input label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.25rem;
+        }
+
+        .thread-input input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .upload-section {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background-color: #f9fafb;
+            border-radius: 0.75rem;
+            border: 1px solid #e5e7eb;
+        }
+
+        .file-input-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex: 1;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-input-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background-color: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            color: #374151;
+            transition: all 0.2s;
+        }
+
+        .file-input-label:hover {
+            background-color: #e5e7eb;
+        }
+
+        .file-selected {
+            font-size: 0.875rem;
+            color: #059669;
+            font-weight: 500;
+        }
+
+        .upload-button {
+            background-color: #059669;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .upload-button:hover:not(:disabled) {
+            background-color: #047857;
+        }
+
+        .upload-button:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .message-input-container {
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-end;
+        }
+
+        .message-input {
+            flex: 1;
+            min-height: 2.5rem;
+            max-height: 8rem;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 1rem;
+            font-size: 1rem;
+            resize: none;
+            font-family: inherit;
+        }
+
+        .message-input:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .send-button {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 2.5rem;
+            height: 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            flex-shrink: 0;
+        }
+
+        .send-button:hover:not(:disabled) {
+            background-color: #1d4ed8;
+        }
+
+        .send-button:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+            color: #6b7280;
+            font-size: 0.875rem;
+            padding: 0.5rem 0;
+        }
+
+        .loading.show {
+            display: flex;
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #e5e7eb;
+            border-top: 2px solid #2563eb;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .error-message {
+            background-color: #fef2f2;
+            color: #dc2626;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #fecaca;
+            margin: 0.5rem 0;
+            font-size: 0.875rem;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .header {
+                padding: 1rem;
+            }
+            
+            .input-section {
+                padding: 1rem;
+            }
+            
+            .message {
+                max-width: 95%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>AI Chat Interface</h1>
+    </div>
+
+    <div class="chat-container">
+        <div class="messages" id="messages">
+            <div class="message system">
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">
+                    Welcome! I'm your AI assistant. You can ask me questions, upload files, or just have a conversation. How can I help you today?
+                </div>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <span>AI is thinking...</span>
+        </div>
+    </div>
+
+    <div class="input-section">
+        <div class="thread-input">
+            <label for="threadTitle">Conversation Title (optional):</label>
+            <input type="text" id="threadTitle" placeholder="Enter a title for this conversation">
+        </div>
+
+        <div class="upload-section">
+            <div class="file-input-container">
+                <input type="file" id="fileInput" class="file-input" accept="*/*">
+                <label for="fileInput" class="file-input-label">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                    </svg>
+                    Choose File
+                </label>
+                <span id="fileSelected" class="file-selected"></span>
+            </div>
+            <button id="uploadButton" class="upload-button" disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9,16V10H5L12,3L19,10H15V16H9M5,20V18H19V20H5Z"/>
+                </svg>
+                Upload
+            </button>
+        </div>
+        
+        <div class="message-input-container">
+            <textarea 
+                id="messageInput" 
+                class="message-input" 
+                placeholder="Type your message here..." 
+                rows="1"
+            ></textarea>
+            <button id="sendButton" class="send-button" title="Send message">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        class ChatInterface {
+            constructor() {
+                this.messagesContainer = document.getElementById('messages');
+                this.messageInput = document.getElementById('messageInput');
+                this.threadTitleInput = document.getElementById('threadTitle');
+                this.sendButton = document.getElementById('sendButton');
+                this.loading = document.getElementById('loading');
+                this.fileInput = document.getElementById('fileInput');
+                this.fileSelected = document.getElementById('fileSelected');
+                this.uploadButton = document.getElementById('uploadButton');
+                this.currentMessageElement = null;
+                this.selectedFile = null;
+                
+                this.initializeEventListeners();
+                this.autoResizeTextarea();
+            }
+
+            initializeEventListeners() {
+                this.sendButton.addEventListener('click', () => this.sendMessage());
+                
+                this.messageInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+
+                this.messageInput.addEventListener('input', () => {
+                    this.autoResizeTextarea();
+                });
+
+                this.fileInput.addEventListener('change', (e) => this.handleFileSelection(e));
+                this.uploadButton.addEventListener('click', () => this.uploadFile());
+            }
+
+            autoResizeTextarea() {
+                this.messageInput.style.height = 'auto';
+                this.messageInput.style.height = Math.min(this.messageInput.scrollHeight, 128) + 'px';
+            }
+
+            addMessage(content, type = 'user') {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${type}`;
+                
+                const avatar = document.createElement('div');
+                avatar.className = 'message-avatar';
+                avatar.textContent = type === 'user' ? 'You' : 
+                                   type === 'assistant' ? 'AI' : '🤖';
+                
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'message-content';
+                contentDiv.textContent = content;
+                
+                messageDiv.appendChild(avatar);
+                messageDiv.appendChild(contentDiv);
+                
+                this.messagesContainer.appendChild(messageDiv);
+                this.scrollToBottom();
+                
+                return contentDiv;
+            }
+
+            addStreamingMessage() {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message assistant';
+                
+                const avatar = document.createElement('div');
+                avatar.className = 'message-avatar';
+                avatar.textContent = 'AI';
+                
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'message-content';
+                contentDiv.textContent = '';
+                
+                messageDiv.appendChild(avatar);
+                messageDiv.appendChild(contentDiv);
+                
+                this.messagesContainer.appendChild(messageDiv);
+                this.currentMessageElement = contentDiv;
+                this.scrollToBottom();
+                
+                return contentDiv;
+            }
+
+            appendToStreamingMessage(chunk) {
+                if (this.currentMessageElement) {
+                    this.currentMessageElement.textContent += chunk;
+                    this.scrollToBottom();
+                }
+            }
+
+            showError(message) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error-message';
+                errorDiv.textContent = `Error: ${message}`;
+                this.messagesContainer.appendChild(errorDiv);
+                this.scrollToBottom();
+            }
+
+            setLoading(isLoading) {
+                this.loading.classList.toggle('show', isLoading);
+                this.sendButton.disabled = isLoading;
+                this.messageInput.disabled = isLoading;
+            }
+
+            scrollToBottom() {
+                this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+            }
+
+            clearInput() {
+                this.messageInput.value = '';
+                this.autoResizeTextarea();
+            }
+
+            handleFileSelection(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    this.selectedFile = file;
+                    this.fileSelected.textContent = `Selected: ${file.name}`;
+                    this.uploadButton.disabled = false;
+                } else {
+                    this.selectedFile = null;
+                    this.fileSelected.textContent = '';
+                    this.uploadButton.disabled = true;
+                }
+            }
+
+            async uploadFile() {
+                if (!this.selectedFile) return;
+
+                const formData = new FormData();
+                formData.append('file', this.selectedFile);
+
+                try {
+                    this.uploadButton.disabled = true;
+                    this.uploadButton.textContent = 'Uploading...';
+
+                    const response = await fetch('/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Upload failed: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    
+                    // Add system message to chat
+                    this.addMessage(
+                        `You have uploaded "${result.filename}". You can now ask questions about it.`, 
+                        'system'
+                    );
+
+                    // Reset file input
+                    this.fileInput.value = '';
+                    this.selectedFile = null;
+                    this.fileSelected.textContent = '';
+                    this.uploadButton.disabled = true;
+                    this.uploadButton.innerHTML = `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M9,16V10H5L12,3L19,10H15V16H9M5,20V18H19V20H5Z"/>
+                        </svg>
+                        Upload
+                    `;
+
+                } catch (error) {
+                    console.error('Upload error:', error);
+                    this.showError(error.message || 'Failed to upload file');
+                    this.uploadButton.disabled = false;
+                    this.uploadButton.innerHTML = `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M9,16V10H5L12,3L19,10H15V16H9M5,20V18H19V20H5Z"/>
+                        </svg>
+                        Upload
+                    `;
+                }
+            }
+
+            async sendMessage() {
+                const message = this.messageInput.value.trim();
+                if (!message) return;
+
+                const threadTitle = this.threadTitleInput.value.trim() || null;
+                
+                // Add user message to chat
+                this.addMessage(message, 'user');
+                this.clearInput();
+                this.setLoading(true);
+
+                try {
+                    // Prepare streaming message container
+                    this.addStreamingMessage();
+
+                    const response = await fetch('/api/chat/stream', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            thread_title: threadTitle
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n');
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6);
+                                if (data === '[DONE]') {
+                                    this.setLoading(false);
+                                    this.currentMessageElement = null;
+                                    return;
+                                }
+                                if (data.trim()) {
+                                    this.appendToStreamingMessage(data);
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error sending message:', error);
+                    this.showError(error.message || 'Failed to send message');
+                } finally {
+                    this.setLoading(false);
+                    this.currentMessageElement = null;
+                }
+            }
+        }
+
+        // Initialize the chat interface when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new ChatInterface();
+        });
+    </script>
+</body>
+</html>

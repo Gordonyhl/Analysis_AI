@@ -1,94 +1,57 @@
-"""FastAPI application for validating and summarizing uploaded count table files.
+"""FastAPI application with chat interface and file upload functionality."""
 
-Exposes a POST `/upload` endpoint that:
-- accepts CSV/TSV files,
-- auto-detects the delimiter,
-- streams parsing with pandas,
-- validates RNA-seq style count tables (numeric columns, non-numeric gene IDs, non-empty), and
-- returns basic metadata and a small preview of the data.
-"""
-
-import io
+import os
+import shutil
+from pathlib import Path
 from fastapi import FastAPI, File, UploadFile, HTTPException
-from typing import Optional
-import pandas as pd
-import csv
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+from api import router as chat_router
 
 # initialize the FastAPI app
 app = FastAPI()
 
-# Helper function to detect the delimiter
-def detect_delimiter(sample: str) -> Optional[str]:
-    """
-    Detects the delimiter of a text sample.
-    Args:
-        sample: A string sample from the file.
-    Returns:
-        The detected delimiter (',' or '\t') or None if not detected.
-    """
-    try:
-        dialect = csv.Sniffer().sniff(sample, delimiters=',\t')
-        return dialect.delimiter
-    except csv.Error:
-        # Fallback for files that might not be perfectly structured CSV/TSV
-        # for the sniffer to work, e.g. single column files.
-        if '\t' in sample:
-            return '\t'
-        if ',' in sample:
-            return ','
-        return None
+# Include the chat router
+app.include_router(chat_router)
+
+# Mount static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Ensure uploads directory exists
+uploads_dir = Path("uploads")
+uploads_dir.mkdir(exist_ok=True)
+
+
+@app.get("/")
+async def read_root():
+    """Serve the main index.html file."""
+    return FileResponse("static/index.html")
 
 
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
     """
-    Uploads and validates a data file (CSV, TSV, or TXT).
-
-    This endpoint checks for a valid file extension, auto-detects the delimiter,
-    and ensures the file is a non-empty, parsable table.
-
+    Simple file upload endpoint that saves files to the uploads/ directory.
+    
     Returns:
-        A JSON response with the file's properties, including dimensions,
-        a snippet of the data, and column data types.
+        A JSON response confirming the file was uploaded successfully.
     """
-    # Check file extension
-    file_extension = file.filename.split('.')[-1].lower()
-    if file_extension not in ["csv", "tsv", "txt"]:
-        raise HTTPException(status_code=400, detail="Invalid file type. Please upload a CSV, TSV, or TXT file.")
-
-    # Read a sample from the stream for delimiter detection
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file provided")
+    
+    # Save the file to the uploads directory
+    file_path = uploads_dir / file.filename
+    
     try:
-        sample_bytes = await file.read(2048)
-        await file.seek(0)
-        sample_str = sample_bytes.decode('utf-8')
-    except UnicodeDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid file encoding. Only UTF-8 is supported.")
-
-    delimiter = detect_delimiter(sample_str)
-    if not delimiter:
-        raise HTTPException(status_code=400, detail="Could not determine the delimiter. Please use a comma or tab-separated file.")
-
-    try:
-        # Process the file stream with pandas
-        df_iterator = pd.read_csv(file.file, sep=delimiter, chunksize=1000, index_col=0, encoding='utf-8')
-
-        # Get the first chunk to perform validation
-        df = next(df_iterator)
-
-        # --- Simplified Validation ---
-        # 1. Check for empty dataframe
-        if df.empty:
-            raise HTTPException(status_code=422, detail="Data validation error: The file appears to be empty or incorrectly formatted.")
-
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
         return {
+            "message": f"File '{file.filename}' uploaded successfully",
             "filename": file.filename,
-            "format": "csv" if delimiter == "," else "tsv",
-            "shape": df.shape,
-            "columns": df.columns.tolist(),
-            "index_name": df.index.name,
-            "dtypes": {col: str(dtype) for col, dtype in df.dtypes.items()},
-            "head": df.head().to_dict(orient='split')
+            "status": "success"
         }
-
+    
     except Exception as e:
-        raise HTTPException(status_code=422, detail=f"Error processing file: {e}")
+        raise HTTPException(status_code=500, detail=f"Error saving file: {e}")
