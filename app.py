@@ -12,7 +12,7 @@ from api import router as chat_router
 # initialize the FastAPI app
 app = FastAPI()
 
-# Include the chat router
+# Include the chat router from api.py
 app.include_router(chat_router)
 
 # Mount static files

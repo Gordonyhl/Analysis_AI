@@ -1,6 +1,8 @@
 import io
 import os
 import sys
+import pytest
+from unittest.mock import AsyncMock, patch
 from fastapi.testclient import TestClient
 
 # Ensure project root is on sys.path to import app.py
@@ -245,3 +247,87 @@ def test_upload_handles_large_file_structure():
     assert data["shape"][0] == 50  # 50 rows
     assert data["shape"][1] == 3   # 3 columns
     assert len(data["columns"]) == 3
+
+
+# ========== Tests for /api/threads endpoint ==========
+
+@patch('storage.get_all_threads')
+def test_list_threads_empty(mock_get_all_threads):
+    """Test /api/threads endpoint returns empty list when no threads exist."""
+    # Mock the storage function to return empty list
+    mock_get_all_threads.return_value = []
+    
+    response = client.get("/api/threads")
+    assert response.status_code == 200
+    data = response.json()
+    assert data == []
+    assert isinstance(data, list)
+
+
+@patch('storage.get_all_threads')
+def test_list_threads_with_data(mock_get_all_threads):
+    """Test /api/threads endpoint returns list of threads when threads exist."""
+    # Mock data that matches the Thread model structure
+    mock_threads = [
+        {
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "title": "Test Thread 1",
+            "created_at": "2024-01-15T10:30:00Z"
+        },
+        {
+            "id": "550e8400-e29b-41d4-a716-446655440001", 
+            "title": "Test Thread 2",
+            "created_at": "2024-01-14T09:20:00Z"
+        }
+    ]
+    mock_get_all_threads.return_value = mock_threads
+    
+    response = client.get("/api/threads")
+    assert response.status_code == 200
+    data = response.json()
+    
+    assert len(data) == 2
+    assert isinstance(data, list)
+    
+    # Check first thread
+    assert data[0]["id"] == "550e8400-e29b-41d4-a716-446655440000"
+    assert data[0]["title"] == "Test Thread 1"
+    assert data[0]["created_at"] == "2024-01-15T10:30:00Z"
+    
+    # Check second thread
+    assert data[1]["id"] == "550e8400-e29b-41d4-a716-446655440001"
+    assert data[1]["title"] == "Test Thread 2"
+    assert data[1]["created_at"] == "2024-01-14T09:20:00Z"
+
+
+@patch('storage.get_all_threads')
+def test_list_threads_storage_exception(mock_get_all_threads):
+    """Test /api/threads endpoint handles storage exceptions gracefully."""
+    # Mock the storage function to raise an exception
+    mock_get_all_threads.side_effect = Exception("Database connection error")
+    
+    response = client.get("/api/threads")
+    # FastAPI will return 500 for unhandled exceptions
+    assert response.status_code == 500
+
+
+def test_list_threads_endpoint_exists():
+    """Test that the /api/threads endpoint exists and accepts GET requests."""
+    # This test doesn't mock storage, so it will use real database
+    # It should at least not return 404 (endpoint exists)
+    response = client.get("/api/threads")
+    # Should be 200 (success) or 500 (if database not set up), but not 404
+    assert response.status_code != 404
+    assert response.status_code in [200, 500]
+
+
+def test_list_threads_response_format():
+    """Test that /api/threads endpoint returns properly formatted JSON."""
+    response = client.get("/api/threads")
+    
+    # Should return valid JSON regardless of data
+    assert response.headers["content-type"] == "application/json"
+    
+    # Response should be parseable as JSON
+    data = response.json()
+    assert isinstance(data, list)  # Should always be a list

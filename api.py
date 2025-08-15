@@ -1,5 +1,6 @@
 """Chat API endpoints."""
 
+import json
 import uuid
 from datetime import datetime
 from typing import List
@@ -8,10 +9,9 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from llm import stream_chat_response
-from storage import get_all_threads
+from storage import get_all_threads, export_thread
 
 router = APIRouter()
-
 
 class ChatRequest(BaseModel):
     message: str
@@ -28,6 +28,32 @@ class Thread(BaseModel):
 async def list_threads():
     """List all conversation threads."""
     return await get_all_threads()
+
+
+@router.get("/api/threads/{thread_id}/messages")
+async def get_thread_messages(thread_id: uuid.UUID):
+    """Return thread metadata and messages for a given thread id."""
+    data = await export_thread(thread_id)
+
+    # Normalize message content to strings for the frontend
+    normalized_messages = []
+    for msg in data.get("messages", []):
+        content = msg.get("content")
+        if isinstance(content, str):
+            content_str = content
+        else:
+            # Ensure non-string JSON content is represented as text
+            content_str = json.dumps(content, ensure_ascii=False)
+        normalized_messages.append(
+            {
+                "idx": msg.get("idx"),
+                "role": msg.get("role"),
+                "content": content_str,
+                "created_at": msg.get("created_at"),
+            }
+        )
+
+    return {"thread": data.get("thread"), "messages": normalized_messages}
 
 
 # chat stream endpoint, used by app.py for main chat interface

@@ -36,9 +36,14 @@ class ChatInterface {
         this.uploadButton.addEventListener('click', () => this.uploadFile());
 
         this.threadList.addEventListener('click', (e) => {
-            if (e.target && e.target.nodeName === 'LI') {
-                const title = e.target.dataset.title;
+            const target = e.target.closest('li');
+            if (target) {
+                const title = target.dataset.title;
+                const threadId = target.dataset.id;
                 this.threadTitleInput.value = title;
+                if (threadId) {
+                    this.loadConversation(threadId);
+                }
             }
         });
     }
@@ -53,14 +58,63 @@ class ChatInterface {
             this.threadList.innerHTML = '';
             threads.forEach(thread => {
                 const li = document.createElement('li');
-                li.textContent = thread.title;
-                li.dataset.title = thread.title;
+                li.textContent = thread.title || '(untitled)';
+                li.dataset.title = thread.title || '';
+                li.dataset.id = thread.id;
                 this.threadList.appendChild(li);
             });
         } catch (error) {
             console.error('Error loading threads:', error);
             this.showError('Could not load conversation history.');
         }
+    }
+
+    async loadConversation(threadId) {
+        try {
+            // Clear current messages except the initial system welcome
+            this.messagesContainer.innerHTML = '';
+            const response = await fetch(`/api/threads/${threadId}/messages`);
+            if (!response.ok) {
+                throw new Error(`Failed to load conversation: ${response.status}`);
+            }
+            const data = await response.json();
+            const messages = Array.isArray(data.messages) ? data.messages : [];
+            messages.forEach(m => {
+                const role = m.role === 'assistant' ? 'assistant' : (m.role === 'system' ? 'system' : 'user');
+                // Use markdown rendering for assistant messages; plain text for user/system
+                if (role === 'assistant') {
+                    this.addMessageWithHTML(m.content || '', 'assistant');
+                } else {
+                    this.addMessage(m.content || '', role);
+                }
+            });
+            this.scrollToBottom();
+        } catch (error) {
+            console.error('Error loading conversation:', error);
+            this.showError('Could not load conversation.');
+        }
+    }
+
+    addMessageWithHTML(content, type = 'assistant') {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${type}`;
+
+        const avatar = document.createElement('div');
+        avatar.className = 'message-avatar';
+        avatar.textContent = type === 'user' ? 'You' :
+                           type === 'assistant' ? 'AI' : '🤖';
+
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'message-content';
+        contentDiv.innerHTML = marked.parse(content);
+
+        messageDiv.appendChild(avatar);
+        messageDiv.appendChild(contentDiv);
+
+        this.messagesContainer.appendChild(messageDiv);
+        this.scrollToBottom();
+
+        return contentDiv;
     }
 
     autoResizeTextarea() {
