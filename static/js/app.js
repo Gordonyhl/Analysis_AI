@@ -3,6 +3,7 @@ class ChatInterface {
         this.messagesContainer = document.getElementById('messages');
         this.messageInput = document.getElementById('messageInput');
         this.threadTitleInput = document.getElementById('threadTitle');
+        this.newThreadButton = document.getElementById('newThreadButton');
         this.sendButton = document.getElementById('sendButton');
         this.loading = document.getElementById('loading');
         this.fileInput = document.getElementById('fileInput');
@@ -12,10 +13,12 @@ class ChatInterface {
         this.currentMessageElement = null;
         this.currentStreamingContent = null; // To hold the full Markdown content
         this.selectedFile = null;
+        this.currentThreadTitle = '';
 
         this.initializeEventListeners();
         this.autoResizeTextarea();
         this.loadThreads();
+        this.ensureThreadTitle();
         this.initializeThemeListener();
     }
 
@@ -41,12 +44,53 @@ class ChatInterface {
             if (target) {
                 const title = target.dataset.title;
                 const threadId = target.dataset.id;
-                this.threadTitleInput.value = title;
+                this.currentThreadTitle = title || '';
+                if (this.threadTitleInput) this.threadTitleInput.value = this.currentThreadTitle;
                 if (threadId) {
                     this.loadConversation(threadId);
                 }
             }
         });
+
+        if (this.newThreadButton) {
+            this.newThreadButton.addEventListener('click', () => this.startNewConversation());
+        }
+    }
+
+    ensureThreadTitle() {
+        const current = (this.threadTitleInput ? (this.threadTitleInput.value || '').trim() : this.currentThreadTitle.trim());
+        if (!current) {
+            const auto = this.generateTimestampTitle();
+            this.currentThreadTitle = auto;
+            if (this.threadTitleInput) this.threadTitleInput.value = auto;
+        }
+    }
+
+    // Removed pre-creation to avoid creating threads on page refresh or button click
+
+    generateTimestampTitle() {
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2, '0');
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const yyyy = String(now.getFullYear());
+        const hh = String(now.getHours()).padStart(2, '0');
+        const min = String(now.getMinutes()).padStart(2, '0');
+        const ss = String(now.getSeconds()).padStart(2, '0');
+        // Format: DDMMYYYY_HHMMSS
+        return `${dd}${mm}${yyyy}_${hh}${min}${ss}`;
+    }
+
+    startNewConversation() {
+        // Set a fresh auto title and clear current messages view (keep welcome hidden by clearing all)
+        const auto = this.generateTimestampTitle();
+        this.currentThreadTitle = auto;
+        if (this.threadTitleInput) this.threadTitleInput.value = auto;
+        this.messagesContainer.innerHTML = '';
+        this.currentMessageElement = null;
+        this.currentStreamingContent = null;
+        // Optionally focus the message box
+        this.messageInput.focus();
+        // Do not create thread yet; it will be created on first send
     }
 
     initializeThemeListener() {
@@ -245,7 +289,6 @@ class ChatInterface {
 
         try {
             this.uploadButton.disabled = true;
-            this.uploadButton.textContent = 'Uploading...';
 
             const response = await fetch('/upload', {
                 method: 'POST',
@@ -271,7 +314,6 @@ class ChatInterface {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M9,16V10H5L12,3L19,10H15V16H9M5,20V18H19V20H5Z"/>
                 </svg>
-                Upload
             `;
 
         } catch (error) {
@@ -282,7 +324,6 @@ class ChatInterface {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M9,16V10H5L12,3L19,10H15V16H9M5,20V18H19V20H5Z"/>
                 </svg>
-                Upload
             `;
         }
     }
@@ -291,7 +332,9 @@ class ChatInterface {
         const message = this.messageInput.value.trim();
         if (!message) return;
 
-        const threadTitle = this.threadTitleInput.value.trim() || null;
+        // Ensure a title at send-time; create-on-send behavior
+        const threadTitle = (this.currentThreadTitle && this.currentThreadTitle.trim()) ? this.currentThreadTitle.trim() : this.generateTimestampTitle();
+        this.currentThreadTitle = threadTitle;
 
         this.addMessage(message, 'user');
         this.clearInput();
@@ -345,6 +388,8 @@ class ChatInterface {
                             this.setLoading(false);
                             this.currentMessageElement = null;
                             this.currentStreamingContent = null;
+                            // Refresh thread list so the new conversation appears immediately
+                            this.loadThreads();
                             return;
                         }
                         if (dataPayload.startsWith('[ERROR]')) {

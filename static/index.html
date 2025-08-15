@@ -71,6 +71,31 @@
             background-color: #e5e7eb;
         }
 
+        .new-thread-button {
+             background: none;
+             border: 1px solid #444;
+             color: white;
+             padding: 0.5rem 1rem;
+             border-radius: 0.5rem;
+             cursor: pointer;
+             font-size: 0.9rem;
+             transition: all 0.2s;
+             margin-left: 0.5rem;
+        }
+
+        .header.light-theme .new-thread-button {
+             border: 1px solid #ddd;
+             color: #333;
+        }
+
+        .new-thread-button:hover {
+             background-color: #333;
+        }
+
+        .header.light-theme .new-thread-button:hover {
+             background-color: #e5e7eb;
+        }
+
         .header h1 {
             font-size: 1.5rem;
             font-weight: 600;
@@ -262,94 +287,52 @@
             color: #333;
         }
 
-        .upload-section {
-            display: flex;
-            gap: 0.75rem;
-            align-items: center;
-            margin-bottom: 1rem;
-            padding: 1rem;
-            background-color: #3a3a3a;
-            border-radius: 0.75rem;
-            border: 1px solid #444;
-        }
+        /* Inline upload controls (compact) */
+        .file-input { display: none; }
 
-        .input-section.light-theme .upload-section {
-            background-color: #f9fafb;
-            border: 1px solid #e5e7eb;
-        }
-
-        .file-input-container {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            flex: 1;
-        }
-
-        .file-input {
-            display: none;
-        }
-
-        .file-input-label {
+        .icon-button {
+            width: 2rem;
+            height: 2rem;
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            background-color: #4a4a4a;
-            border: 1px solid #555;
+            justify-content: center;
             border-radius: 0.5rem;
-            cursor: pointer;
-            font-size: 0.875rem;
+            border: 1px solid #444;
+            background-color: #3a3a3a;
             color: #e0e0e0;
-            transition: all 0.2s;
+            cursor: pointer;
+            transition: background-color 0.2s;
         }
 
-        .input-section.light-theme .file-input-label {
-            background-color: #f3f4f6;
+        .icon-button:hover { background-color: #4a4a4a; }
+
+        .input-section.light-theme .icon-button {
             border: 1px solid #d1d5db;
+            background-color: #f9fafb;
             color: #374151;
         }
 
-        .file-input-label:hover {
-            background-color: #5a5a5a;
-        }
-
-        .input-section.light-theme .file-input-label:hover {
-            background-color: #e5e7eb;
-        }
-
-        .file-selected {
-            font-size: 0.875rem;
-            color: #059669;
-            font-weight: 500;
-        }
+        .input-section.light-theme .icon-button:hover { background-color: #f3f4f6; }
 
         .upload-button {
+            width: 2rem;
+            height: 2rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             background-color: #059669;
             color: white;
             border: none;
             border-radius: 0.5rem;
-            padding: 0.5rem 1rem;
             cursor: pointer;
-            font-size: 0.875rem;
-            font-weight: 500;
             transition: background-color 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 0.25rem;
         }
 
-        .upload-button:hover:not(:disabled) {
-            background-color: #047857;
-        }
+        .upload-button:hover:not(:disabled) { background-color: #047857; }
 
-        .upload-button:disabled {
-            background-color: #555;
-            cursor: not-allowed;
-        }
+        .upload-button:disabled { background-color: #555; cursor: not-allowed; }
 
-        .input-section.light-theme .upload-button:disabled {
-            background-color: #9ca3af;
-        }
+        .input-section.light-theme .upload-button:disabled { background-color: #9ca3af; }
 
         .message-input-container {
             display: flex;
@@ -489,7 +472,10 @@
         <div class="header-content">
             <h1>AI Chat Interface</h1>
         </div>
-        <button class="theme-toggle" id="themeToggle">☀️ Light</button>
+        <div>
+            <button class="new-thread-button" id="newThreadButton" title="Start a new conversation">+ New</button>
+            <button class="theme-toggle" id="themeToggle">☀️ Light</button>
+        </div>
     </div>
 
     <div class="main-container">
@@ -516,31 +502,21 @@
     </div>
 
     <div class="input-section">
-        <div class="thread-input">
-            <label for="threadTitle">Conversation Title (optional):</label>
-            <input type="text" id="threadTitle" placeholder="Enter a title for this conversation">
-        </div>
-
-        <div class="upload-section">
-            <div class="file-input-container">
-                <input type="file" id="fileInput" class="file-input" accept="*/*">
-                <label for="fileInput" class="file-input-label">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
-                    </svg>
-                    Choose File
-                </label>
-                <span id="fileSelected" class="file-selected"></span>
-            </div>
-            <button id="uploadButton" class="upload-button" disabled>
+        <!-- Removed thread title input; title auto-handled in JS at send-time -->
+        
+        <div class="message-input-container">
+            <input type="file" id="fileInput" class="file-input" accept="*/*">
+            <label for="fileInput" class="icon-button" title="Choose file">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                </svg>
+            </label>
+            <button id="uploadButton" class="upload-button" title="Upload file" disabled>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M9,16V10H5L12,3L19,10H15V16H9M5,20V18H19V20H5Z"/>
                 </svg>
-                Upload
             </button>
-        </div>
-        
-        <div class="message-input-container">
+            <span id="fileSelected" class="file-selected" style="display:none"></span>
             <textarea 
                 id="messageInput" 
                 class="message-input" 

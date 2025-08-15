@@ -9,7 +9,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from llm import stream_chat_response
-from storage import get_all_threads, export_thread
+from storage import get_all_threads, export_thread, get_or_create_thread_by_title
 
 router = APIRouter()
 
@@ -28,6 +28,19 @@ class Thread(BaseModel):
 async def list_threads():
     """List all conversation threads."""
     return await get_all_threads()
+
+
+class CreateThreadRequest(BaseModel):
+    title: str
+
+
+@router.post("/api/threads", response_model=Thread)
+async def create_thread(payload: CreateThreadRequest):
+    """Create (or get) a conversation thread by title and return its metadata."""
+    thread_id = await get_or_create_thread_by_title(payload.title)
+    data = await export_thread(thread_id)
+    thread = data.get("thread", {})
+    return Thread(id=uuid.UUID(thread.get("id")), title=thread.get("title"), created_at=datetime.fromisoformat(thread.get("created_at")))
 
 
 @router.get("/api/threads/{thread_id}/messages")
