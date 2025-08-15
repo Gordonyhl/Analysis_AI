@@ -16,6 +16,7 @@ class ChatInterface {
         this.initializeEventListeners();
         this.autoResizeTextarea();
         this.loadThreads();
+        this.initializeThemeListener();
     }
 
     initializeEventListeners() {
@@ -45,6 +46,31 @@ class ChatInterface {
                     this.loadConversation(threadId);
                 }
             }
+        });
+    }
+
+    initializeThemeListener() {
+        // Listen for theme changes and update message styles accordingly
+        const themeToggle = document.getElementById('themeToggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+                // Small delay to ensure CSS classes are updated
+                setTimeout(() => {
+                    // Re-render all markdown messages to apply new theme styles
+                    this.refreshMarkdownMessages();
+                }, 10);
+            });
+        }
+    }
+
+    refreshMarkdownMessages() {
+        // Re-render all assistant messages with markdown to apply new theme styles
+        const assistantMessages = this.messagesContainer.querySelectorAll('.message.assistant .message-content');
+        assistantMessages.forEach(contentDiv => {
+            // Get the original markdown content
+            const markdownContent = contentDiv.textContent || contentDiv.innerText;
+            // Re-render with marked
+            contentDiv.innerHTML = marked.parse(markdownContent);
         });
     }
 
