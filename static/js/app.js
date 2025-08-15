@@ -8,12 +8,14 @@ class ChatInterface {
         this.fileInput = document.getElementById('fileInput');
         this.fileSelected = document.getElementById('fileSelected');
         this.uploadButton = document.getElementById('uploadButton');
+        this.threadList = document.getElementById('thread-list');
         this.currentMessageElement = null;
         this.currentStreamingContent = null; // To hold the full Markdown content
         this.selectedFile = null;
 
         this.initializeEventListeners();
         this.autoResizeTextarea();
+        this.loadThreads();
     }
 
     initializeEventListeners() {
@@ -32,6 +34,33 @@ class ChatInterface {
 
         this.fileInput.addEventListener('change', (e) => this.handleFileSelection(e));
         this.uploadButton.addEventListener('click', () => this.uploadFile());
+
+        this.threadList.addEventListener('click', (e) => {
+            if (e.target && e.target.nodeName === 'LI') {
+                const title = e.target.dataset.title;
+                this.threadTitleInput.value = title;
+            }
+        });
+    }
+
+    async loadThreads() {
+        try {
+            const response = await fetch('/api/threads');
+            if (!response.ok) {
+                throw new Error(`Failed to load threads: ${response.status}`);
+            }
+            const threads = await response.json();
+            this.threadList.innerHTML = '';
+            threads.forEach(thread => {
+                const li = document.createElement('li');
+                li.textContent = thread.title;
+                li.dataset.title = thread.title;
+                this.threadList.appendChild(li);
+            });
+        } catch (error) {
+            console.error('Error loading threads:', error);
+            this.showError('Could not load conversation history.');
+        }
     }
 
     autoResizeTextarea() {

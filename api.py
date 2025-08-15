@@ -1,10 +1,14 @@
 """Chat API endpoints."""
 
+import uuid
+from datetime import datetime
+from typing import List
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from llm import stream_chat_response
+from storage import get_all_threads
 
 router = APIRouter()
 
@@ -12,6 +16,19 @@ router = APIRouter()
 class ChatRequest(BaseModel):
     message: str
     thread_title: str | None = None
+
+
+class Thread(BaseModel):
+    id: uuid.UUID
+    title: str
+    created_at: datetime
+
+
+@router.get("/api/threads", response_model=List[Thread])
+async def list_threads():
+    """List all conversation threads."""
+    return await get_all_threads()
+
 
 # chat stream endpoint, used by app.py for main chat interface
 @router.post("/api/chat/stream")

@@ -87,6 +87,16 @@ async def get_or_create_default_thread(*, engine: Optional[AsyncEngine] = None) 
     return await get_or_create_thread_by_title(settings.thread_title, engine=engine)
 
 
+async def get_all_threads(*, engine: Optional[AsyncEngine] = None) -> List[Dict[str, Any]]:
+    """Fetch all threads, ordered by most recent."""
+    engine = engine or get_async_engine()
+    async with engine.connect() as conn:
+        result = await conn.execute(
+            text("SELECT id, title, created_at FROM threads ORDER BY created_at DESC")
+        )
+        return [{"id": row[0], "title": row[1], "created_at": row[2]} for row in result.fetchall()]
+
+
 # ---------- Messages ----------
 
 def _row_to_agent_message(row: Tuple[Any, Any, Any]) -> Any:
