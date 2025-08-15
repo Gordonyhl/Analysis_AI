@@ -9,6 +9,7 @@ class ChatInterface {
         this.fileSelected = document.getElementById('fileSelected');
         this.uploadButton = document.getElementById('uploadButton');
         this.currentMessageElement = null;
+        this.currentStreamingContent = null; // To hold the full Markdown content
         this.selectedFile = null;
 
         this.initializeEventListeners();
@@ -70,13 +71,14 @@ class ChatInterface {
 
         const contentDiv = document.createElement('div');
         contentDiv.className = 'message-content';
-        contentDiv.textContent = '';
+        contentDiv.innerHTML = ''; // Start with empty HTML
 
         messageDiv.appendChild(avatar);
         messageDiv.appendChild(contentDiv);
 
         this.messagesContainer.appendChild(messageDiv);
         this.currentMessageElement = contentDiv;
+        this.currentStreamingContent = ''; // Reset content holder
         this.scrollToBottom();
 
         return contentDiv;
@@ -84,7 +86,8 @@ class ChatInterface {
 
     appendToStreamingMessage(chunk) {
         if (this.currentMessageElement) {
-            this.currentMessageElement.textContent += chunk;
+            this.currentStreamingContent += chunk; // Append markdown chunk
+            this.currentMessageElement.innerHTML = marked.parse(this.currentStreamingContent); // Re-render
             this.scrollToBottom();
         }
     }
@@ -206,31 +209,53 @@ class ChatInterface {
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
 
+            // Robust SSE parsing with buffering across chunk boundaries
+            let textBuffer = '';
+            let eventDataLines = [];
+
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split('\n');
+                textBuffer += decoder.decode(value, { stream: true });
 
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        const data = line.slice(6);
-                        if (data === '[DONE]') {
+                // Process complete lines only; keep the remainder in buffer
+                let newlineIndex;
+                while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
+                    const line = textBuffer.slice(0, newlineIndex);
+                    textBuffer = textBuffer.slice(newlineIndex + 1);
+
+                    // Empty line denotes end of an SSE event
+                    if (line === '') {
+                        const dataPayload = eventDataLines.join('\n');
+                        eventDataLines = [];
+
+                        if (!dataPayload) continue;
+
+                        if (dataPayload === '[DONE]') {
                             this.setLoading(false);
                             this.currentMessageElement = null;
+                            this.currentStreamingContent = null;
                             return;
                         }
-                        if (data.startsWith('[ERROR]')) {
-                            const errorMessage = data.slice(8);
+                        if (dataPayload.startsWith('[ERROR]')) {
+                            const errorMessage = dataPayload.slice(8);
                             this.showError(errorMessage);
                             this.setLoading(false);
                             this.currentMessageElement = null;
+                            this.currentStreamingContent = null;
                             return;
                         }
-                        if (data.trim()) {
-                            this.appendToStreamingMessage(data);
-                        }
+                        this.appendToStreamingMessage(dataPayload);
+                        continue;
+                    }
+
+                    // Only process data fields; ignore id:, event:, retry:
+                    if (line.startsWith('data:')) {
+                        // Per SSE spec, a single optional space may follow the colon
+                        const afterColon = line.slice(5);
+                        const valuePart = afterColon.startsWith(' ') ? afterColon.slice(1) : afterColon;
+                        eventDataLines.push(valuePart);
                     }
                 }
             }
@@ -240,6 +265,7 @@ class ChatInterface {
         } finally {
             this.setLoading(false);
             this.currentMessageElement = null;
+            this.currentStreamingContent = null;
         }
     }
 }

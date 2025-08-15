@@ -23,7 +23,13 @@ async def chat_stream(payload: ChatRequest):
             async for chunk in stream_chat_response(
                 payload.message, thread_title=payload.thread_title
             ):
-                yield f"data: {chunk}\n\n"
+                # SSE spec: multi-line payloads must be sent as multiple data: lines
+                # Split by universal newlines to preserve paragraph breaks
+                for line in chunk.splitlines():
+                    yield f"data: {line}\n"
+                # End of one SSE event
+                yield "\n"
+            # Signal completion
             yield "data: [DONE]\n\n"
         except Exception as e:
             # Log the exception for debugging

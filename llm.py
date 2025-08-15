@@ -75,6 +75,7 @@ async def stream_chat_response(
         async for cumulative_text in result.stream_text(delta=False):
             delta = cumulative_text[len(last_yielded_text):]
             if delta:
+                print(f"AI delta: {delta}")  # Logging the raw AI output
                 yield delta
                 last_yielded_text = cumulative_text
     

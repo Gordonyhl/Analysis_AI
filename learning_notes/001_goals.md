@@ -3,8 +3,8 @@
 [X] Chatbot with memory \
 [X] FastAPI integration \
 [X] Streaming response \
-[ ] HTTP post request for chatbot with memory (In Progress via API) \
-[ ] A front-end for chat (In Progress) \
+[X] HTTP post request for chatbot with memory (In Progress via API) \
+[X] A front-end for chat (In Progress) \
 
 [ ] Tool use, calculator tool to execute R command \
 [ ] MCP call \
